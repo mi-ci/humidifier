@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+    <link
+      rel="stylesheet"
+      href=" {{ url_for('static', filename='css/main.css') }}"
+    />
+    <script src="https://bernii.github.io/gauge.js/dist/gauge.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      #foo {
+        height: 200px;
+        width: 400px;
+      }
+      .wrap {
+        position: absolute;
+        top: 210px;
+        left: 50px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="status"><h1>가습기상태</h1></div>
+    <div class="status"><h2 id="status"></h2></div>
+    <br />
+    <div class="humidity">
+      <h1>외부습도</h1>
+      <h2 id="out_humidity"></h2>
+      <br />
+      <br />
+      <h1>현재습도</h1>
+      <h2 id="humidity"></h2>
+      <canvas id="foo"></canvas>
+    </div>
+    <div class="graph">
+      <canvas id="myChart"></canvas>
+    </div>
+
+    <h1>사람 감지 로그</h1>
+    <img src="" alt="" id="image0" width="200px" height="200px" />
+    <img src="" alt="" id="image1" width="200px" height="200px" />
+    <img src="" alt="" id="image2" width="200px" height="200px" />
+    <img src="" alt="" id="image3" width="200px" height="200px" />
+    <img src="" alt="" id="image4" width="200px" height="200px" />
+    <img src="" alt="" id="image5" width="200px" height="200px" />
+    <img src="" alt="" id="image6" width="200px" height="200px" />
+    <img src="" alt="" id="image7" width="200px" height="200px" />
+    <img src="" alt="" id="image8" width="200px" height="200px" />
+
+    <script>
+      $(document).ready(function () {
+        var status = document.getElementById("status");
+        var out_humidity = document.getElementById("out_humidity");
+        var humidity = document.getElementById("humidity");
+        const xValues = [-50, -40, -30, -20, -10, 0];
+        let yValues = [0, 0, 0, 0, 0, 0];
+
+        // Initialize the chart
+        let myChart = new Chart("myChart", {
+          type: "line",
+          data: {
+            labels: xValues,
+            datasets: [
+              {
+                data: yValues,
+                fill: false,
+                borderColor: "rgba(75,192,192,1)",
+                tension: 0.1,
+                label: "Humidity",
+              },
+            ],
+          },
+          options: {
+            animation: {
+              duration: 5000, // 500 milliseconds for animation
+              onProgress: function (animation) {
+                if (animation.currentStep / animation.numSteps === 1) {
+                  // When the animation completes, update the labels
+                  let shift = this.data.labels.length > 6;
+                  if (shift) {
+                    this.data.labels.push(
+                      this.data.labels[this.data.labels.length - 1] + 10
+                    ); // Increment last label
+                    this.data.labels.shift(); // Remove first label to simulate scrolling
+                  }
+                }
+              },
+            },
+            scales: {
+              yAxes: [
+                {
+                  ticks: {
+                    min: 30,
+                    max: 50,
+                    stepSize: 4,
+                  },
+                },
+              ],
+              xAxes: [
+                {
+                  ticks: {
+                    autoSkip: false,
+                    min: -40,
+                    max: 0,
+                    stepSize: 10,
+                  },
+                },
+              ],
+            },
+          },
+        });
+
+        // Update the chart and other data every 5 seconds
+        setInterval(function () {
+          $.ajax({
+            url: "/get_data",
+            type: "POST",
+            success: function (data) {
+              gauge.set(data.humidity);
+              out_humidity.innerHTML = data.out_humidity + "%";
+              humidity.innerHTML = data.humidity + "%";
+              status.innerHTML = data.status;
+              yValues.push(data.humidity);
+              if (yValues.length > 6) {
+                yValues.shift();
+              }
+              document.getElementById("image0").src = `/static/image/image${
+                data.size - 1
+              }.jpg`;
+              document.getElementById("image1").src = `/static/image/image${
+                data.size - 2
+              }.jpg`;
+              document.getElementById("image2").src = `/static/image/image${
+                data.size - 3
+              }.jpg`;
+              document.getElementById("image3").src = `/static/image/image${
+                data.size - 4
+              }.jpg`;
+              document.getElementById("image4").src = `/static/image/image${
+                data.size - 5
+              }.jpg`;
+              document.getElementById("image5").src = `/static/image/image${
+                data.size - 6
+              }.jpg`;
+              document.getElementById("image6").src = `/static/image/image${
+                data.size - 7
+              }.jpg`;
+              document.getElementById("image7").src = `/static/image/image${
+                data.size - 8
+              }.jpg`;
+              document.getElementById("image8").src = `/static/image/image${
+                data.size - 9
+              }.jpg`;
+              myChart.data.datasets[0].data = yValues;
+              myChart.update({
+                preservation: true,
+              }); // Update the chart with preservation to maintain the state
+            },
+          });
+        }, 10000);
+      });
+      var opts = {
+        lines: 12,
+        angle: 0.0,
+        lineWidth: 0.44,
+        pointer: {
+          length: 0.5,
+          strokeWidth: 0.035,
+          color: "rgba(75,192,222,1)",
+        },
+        limitMax: false,
+        colorStart: "rgba(75,192,192,1)",
+        colorStop: "#8FC0DA",
+        strokeColor: "#E0E0E0",
+        generateGradient: true,
+      };
+      var target = document.getElementById("foo");
+      var gauge = new Gauge(target).setOptions(opts);
+      gauge.maxValue = 100;
+      gauge.animationSpeed = 32;
+    </script>
+  </body>
+</html>
